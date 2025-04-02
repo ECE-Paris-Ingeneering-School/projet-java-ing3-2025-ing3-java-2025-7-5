@@ -26,6 +26,10 @@ public class Utilisateur {
         return id;
     }
 
+    public void Id(int Id) {
+        this.id = Id;
+    }
+
     public String getNom() {
         return nom;
     }
