@@ -1,4 +1,14 @@
 package DAO;
 
-public class RendezVousDAO {
+import Modele.RendezVous;
+import DAO.DAOException;
+import java.util.List;
+
+public interface RendezVousDAO {
+    void create(RendezVous rendezVous) throws DAOException;
+    RendezVous findById(int id) throws DAOException;
+    List<RendezVous> findAll() throws DAOException;
+    void update(RendezVous rendezVous) throws DAOException;
+    void delete(int id) throws DAOException;
+    List<RendezVous> findByPatient(int patientId) throws DAOException;
 }
