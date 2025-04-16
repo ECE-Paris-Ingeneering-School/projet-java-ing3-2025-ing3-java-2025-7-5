@@ -1,8 +1,5 @@
 package Modele;
 
-/** Classe représentant un utilisateur du système
- * @author [Elena]
- */
 public class Utilisateur {
     private int id;
     private String nom;
@@ -11,8 +8,17 @@ public class Utilisateur {
     private String motDePasse;
     private String typeUtilisateur; // "patient" ou "admin"
 
-
-    public Utilisateur(int id, String nom, String prenom, String email, String motDePasse, String typeUtilisateur) {
+    /**
+     * Constructeur complet
+     * @param id Identifiant unique
+     * @param nom Nom de famille
+     * @param prenom Prénom
+     * @param email Email (unique)
+     * @param motDePasse Mot de passe crypté
+     * @param typeUtilisateur "patient" ou "admin"
+     */
+    public Utilisateur(int id, String nom, String prenom, String email,
+                       String motDePasse, String typeUtilisateur) {
         this.id = id;
         this.nom = nom;
         this.prenom = prenom;
@@ -26,8 +32,8 @@ public class Utilisateur {
         return id;
     }
 
-    public void Id(int Id) {
-        this.id = Id;
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getNom() {
@@ -70,10 +76,11 @@ public class Utilisateur {
         this.typeUtilisateur = typeUtilisateur;
     }
 
-    /** Vérifie si le mot de passe fourni correspond,
-     * return true si correspondance, false sinon
+    /**
+     * Vérifie si le mot de passe fourni correspond
+     * @param motDePasse Mot de passe à vérifier
+     * @return true si correspondance, false sinon
      */
-
     public boolean verifierMotDePasse(String motDePasse) {
         return this.motDePasse.equals(motDePasse);
     }
