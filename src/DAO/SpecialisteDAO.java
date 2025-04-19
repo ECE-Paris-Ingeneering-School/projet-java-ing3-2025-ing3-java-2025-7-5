@@ -1,7 +1,7 @@
+// DAO/SpecialisteDAO.java
 package DAO;
 
 import Modele.Specialiste;
-import DAO.DAOException;
 import java.util.List;
 
 public interface SpecialisteDAO {
@@ -10,4 +10,8 @@ public interface SpecialisteDAO {
     List<Specialiste> findAll() throws DAOException;
     void update(Specialiste specialiste) throws DAOException;
     void delete(int id) throws DAOException;
+
+    // ← Ajouté pour la recherche par nom et par spécialité
+    List<Specialiste> findByNom(String nom) throws DAOException;
+    List<Specialiste> findBySpecialite(String specialite) throws DAOException;
 }

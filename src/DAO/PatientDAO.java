@@ -11,4 +11,3 @@ public interface PatientDAO {
     void update(Patient patient) throws DAOException;
     void delete(int id) throws DAOException;
 }
-

@@ -1,6 +1,7 @@
 package Controleur;
 
 import DAO.PatientDAO;
+import DAO.SpecialisteDAO;
 import DAO.UtilisateurDAO;
 import Modele.Patient;
 import Modele.Utilisateur;
@@ -10,8 +11,6 @@ import Vue.InscriptionView;
 import Vue.ProfilPatientView;
 
 import javax.swing.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -19,14 +18,19 @@ import java.time.format.DateTimeParseException;
 public class AuthentificationController {
     private final UtilisateurDAO utilisateurDAO;
     private final PatientDAO patientDAO;
+    private final SpecialisteDAO specialisteDAO;
     private final AccueilView accueilView;
     private ConnexionView connexionView;
     private InscriptionView inscriptionView;
 
-    public AuthentificationController(UtilisateurDAO utilisateurDAO, PatientDAO patientDAO, AccueilView accueilView) {
+    public AuthentificationController(UtilisateurDAO utilisateurDAO,
+                                      PatientDAO patientDAO,
+                                      SpecialisteDAO specialisteDAO,
+                                      AccueilView accueilView) {
         this.utilisateurDAO = utilisateurDAO;
-        this.patientDAO = patientDAO;
-        this.accueilView = accueilView;
+        this.patientDAO     = patientDAO;
+        this.specialisteDAO = specialisteDAO;
+        this.accueilView    = accueilView;
 
         initListeners();
     }
@@ -49,7 +53,7 @@ public class AuthentificationController {
     }
 
     private void handleConnexion() {
-        String email = connexionView.getEmail().trim();
+        String email    = connexionView.getEmail().trim();
         String password = connexionView.getPassword();
 
         if (email.isEmpty() || password.isEmpty()) {
@@ -59,7 +63,6 @@ public class AuthentificationController {
 
         try {
             Utilisateur utilisateur = utilisateurDAO.findByEmail(email);
-
             if (utilisateur != null && utilisateur.verifierMotDePasse(password)) {
                 Patient patient = patientDAO.findById(utilisateur.getId());
                 openProfilPatient(patient);
@@ -76,22 +79,18 @@ public class AuthentificationController {
 
     private void handleInscription() {
         try {
-            // Validation des champs
             if (!validateInscriptionFields()) {
                 return;
             }
 
-            // Vérification email unique
             if (utilisateurDAO.findByEmail(inscriptionView.getEmail()) != null) {
                 inscriptionView.showError("Cet email est déjà utilisé");
                 return;
             }
 
-            // Création du patient
             Patient patient = createPatientFromForm();
             patientDAO.create(patient);
 
-            // Redirection
             openProfilPatient(patient);
             inscriptionView.dispose();
             accueilView.setVisible(false);
@@ -124,15 +123,14 @@ public class AuthentificationController {
     }
 
     private Patient createPatientFromForm() throws DateTimeParseException {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         return new Patient(
-                0, // ID auto-généré
+                0,
                 inscriptionView.getNom(),
                 inscriptionView.getPrenom(),
                 inscriptionView.getEmail(),
                 inscriptionView.getPassword(),
-                LocalDate.parse(inscriptionView.getDateNaissance(), formatter),
+                LocalDate.parse(inscriptionView.getDateNaissance(), fmt),
                 inscriptionView.getAdresse(),
                 inscriptionView.getTelephone()
         );
@@ -140,7 +138,13 @@ public class AuthentificationController {
 
     private void openProfilPatient(Patient patient) {
         ProfilPatientView profilView = new ProfilPatientView(patient);
-        new ProfilPatientController(patient, profilView, patientDAO);
+        // Maintenant on passe bien les 4 paramètres requis
+        new ProfilPatientController(
+                patient,
+                profilView,
+                patientDAO,
+                specialisteDAO
+        );
         profilView.setVisible(true);
     }
 }

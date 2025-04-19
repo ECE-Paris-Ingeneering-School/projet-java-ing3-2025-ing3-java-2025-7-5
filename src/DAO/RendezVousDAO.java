@@ -1,7 +1,7 @@
+// DAO/RendezVousDAO.java
 package DAO;
 
 import Modele.RendezVous;
-import DAO.DAOException;
 import java.util.List;
 
 public interface RendezVousDAO {
@@ -11,4 +11,7 @@ public interface RendezVousDAO {
     void update(RendezVous rendezVous) throws DAOException;
     void delete(int id) throws DAOException;
     List<RendezVous> findByPatient(int patientId) throws DAOException;
+
+    // <— Ajout de cette méthode pour récupérer les RDV d’un spécialiste
+    List<RendezVous> findBySpecialiste(int specialisteId) throws DAOException;
 }

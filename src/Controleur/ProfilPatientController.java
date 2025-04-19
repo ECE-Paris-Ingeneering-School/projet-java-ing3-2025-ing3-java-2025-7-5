@@ -1,99 +1,157 @@
 package Controleur;
 
+import DAO.DAOException;
 import DAO.PatientDAO;
+import DAO.SpecialisteDAO;
+import DAO.RendezVousDAO;
+import DAO.RendezVousDAOImpl;
 import Modele.Patient;
-import Vue.ProfilPatientView;
-import Vue.ModifierProfilView;
+import Modele.RendezVous;
+import Vue.HistoriqueView;
 import Vue.PrendreRendezVousView;
+import Vue.ProfilPatientView;
 
 import javax.swing.*;
-import java.awt.event.ActionListener; // Import manquant
-
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ProfilPatientController {
     private final Patient patient;
     private final ProfilPatientView view;
     private final PatientDAO patientDAO;
+    private final SpecialisteDAO specialisteDAO;
+    private final RendezVousDAO rendezVousDAO;
 
-    public ProfilPatientController(Patient patient, ProfilPatientView view, PatientDAO patientDAO) {
-        this.patient = patient;
-        this.view = view;
-        this.patientDAO = patientDAO;
+    public ProfilPatientController(Patient patient,
+                                   ProfilPatientView view,
+                                   PatientDAO patientDAO,
+                                   SpecialisteDAO specialisteDAO) {
+        this.patient        = patient;
+        this.view           = view;
+        this.patientDAO     = patientDAO;
+        this.specialisteDAO = specialisteDAO;
+        this.rendezVousDAO  = new RendezVousDAOImpl();
 
-        initControllers();
-        setupListeners();
+        view.setModifierProfilListener(e -> openModifierProfil());
+        view.setQuickActionPrendreRdvListener(e -> openRendezVousView());
+        view.setHistoriqueListener(e -> openHistoriqueView());
+        view.setAnnulerRdvListener(e -> cancelSelectedAppointment());
+
+        refreshAll();
     }
 
-    private void initControllers() {
-        // Initialisation des sous-contrôleurs
+    private void refreshAll() {
+        loadConfirmedAppointments();
+        loadNextAppointment();
     }
 
-    private void setupListeners() {
-        // Utilisation de ActionListener directement
-        view.getBtnPrendreRdv().addActionListener(e -> handlePrendreRdv());
-        view.getBtnModifierProfil().addActionListener(e -> handleModifierProfil());
+    private void loadConfirmedAppointments() {
+        try {
+            List<RendezVous> all = rendezVousDAO.findByPatient(patient.getId());
+            List<RendezVous> confirmed = all.stream()
+                    .filter(r -> "confirmé".equalsIgnoreCase(r.getStatut()))
+                    .collect(Collectors.toList());
+            view.setRendezVousData(confirmed);
+        } catch (DAOException e) {
+            JOptionPane.showMessageDialog(view,
+                    "Erreur chargement des rendez-vous : " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-    private void handlePrendreRdv() {
+    private void loadNextAppointment() {
+        try {
+            List<RendezVous> all = rendezVousDAO.findByPatient(patient.getId());
+            RendezVous next = all.stream()
+                    .filter(r -> "confirmé".equalsIgnoreCase(r.getStatut())
+                            && r.getDateHeure().isAfter(LocalDateTime.now()))
+                    .min(Comparator.comparing(RendezVous::getDateHeure))
+                    .orElse(null);
+            view.setNextAppointment(next);
+        } catch (DAOException e) {
+            // silent if error
+        }
+    }
+
+    private void openModifierProfil() {
+        // ... votre code existant pour modifier le profil ...
+    }
+
+    private void openRendezVousView() {
         view.setVisible(false);
         PrendreRendezVousView rdvView = new PrendreRendezVousView(patient);
-        new PrendreRendezVousController(patient, rdvView, patientDAO);
+        new RendezVousController(
+                patient,
+                rdvView,
+                specialisteDAO,
+                rendezVousDAO,
+                () -> {
+                    rdvView.dispose();
+                    view.setVisible(true);
+                    refreshAll();
+                }
+        );
         rdvView.setVisible(true);
     }
 
-    private void handleModifierProfil() {
-        ModifierProfilView editView = new ModifierProfilView(patient);
-        new ModifierProfilController(patient, editView, patientDAO, this::refreshProfileView);
-        editView.setVisible(true);
-    }
-
-    private void refreshProfileView() {
+    private void openHistoriqueView() {
         try {
-            Patient updatedPatient = patientDAO.findById(patient.getId());
-            view.dispose();
-            ProfilPatientView newProfilView = new ProfilPatientView(updatedPatient);
-            new ProfilPatientController(updatedPatient, newProfilView, patientDAO);
-            newProfilView.setVisible(true);
-        } catch (Exception ex) {
+            List<RendezVous> historique = rendezVousDAO.findByPatient(patient.getId())
+                    .stream()
+                    .filter(r -> {
+                        String s = r.getStatut().toLowerCase();
+                        return s.equals("terminé") || s.equals("annulé");
+                    })
+                    .collect(Collectors.toList());
+            HistoriqueView hv = new HistoriqueView(historique);
+            hv.setVisible(true);
+        } catch (DAOException e) {
             JOptionPane.showMessageDialog(view,
-                    "Erreur lors du rafraîchissement: " + ex.getMessage(),
-                    "Erreur",
-                    JOptionPane.ERROR_MESSAGE);
+                    "Erreur chargement historique : " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // Classe interne modifiée pour PrendreRendezVousController
-    private static class PrendreRendezVousController {
-        public PrendreRendezVousController(Patient patient, PrendreRendezVousView view, PatientDAO patientDAO) {
-            view.setRetourListener(e -> {
-                view.dispose();
-                ProfilPatientView profilView = new ProfilPatientView(patient);
-                new ProfilPatientController(patient, profilView, patientDAO);
-                profilView.setVisible(true);
-            });
-        }
-    }
+    private void cancelSelectedAppointment() {
+        try {
+            // on ne prend que les confirmés pour l'annulation
+            List<RendezVous> confirmed = rendezVousDAO.findByPatient(patient.getId())
+                    .stream()
+                    .filter(r -> "confirmé".equalsIgnoreCase(r.getStatut()))
+                    .collect(Collectors.toList());
 
-    // Classe interne modifiée pour ModifierProfilController
-    private static class ModifierProfilController {
-        public ModifierProfilController(Patient patient, ModifierProfilView view, PatientDAO patientDAO, Runnable onSuccess) {
-            view.setValiderListener(e -> updatePatient(patient, view, patientDAO, onSuccess));
-            view.setAnnulerListener(e -> view.dispose());
-        }
-
-        private void updatePatient(Patient patient, ModifierProfilView view, PatientDAO patientDAO, Runnable onSuccess) {
-            try {
-                patient.setNom(view.getNom());
-                patient.setPrenom(view.getPrenom());
-                patient.setEmail(view.getEmail());
-                patient.setTelephone(view.getTelephone());
-                patient.setAdresse(view.getAdresse());
-
-                patientDAO.update(patient);
-                onSuccess.run();
-            } catch (Exception ex) {
-                view.showError("Erreur de mise à jour: " + ex.getMessage());
+            int idx = view.getSelectedAppointmentIndex();
+            if (idx < 0 || idx >= confirmed.size()) {
+                JOptionPane.showMessageDialog(view,
+                        "Sélectionnez un rendez-vous à annuler.", "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
             }
+
+            RendezVous rdv = confirmed.get(idx);
+            Duration diff = Duration.between(LocalDateTime.now(), rdv.getDateHeure());
+            if (diff.toHours() < 48) {
+                JOptionPane.showMessageDialog(view,
+                        "Annulation impossible moins de 48 h avant le rendez-vous.",
+                        "Erreur", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            rdv.setStatut("annulé");
+            rendezVousDAO.update(rdv);
+
+            JOptionPane.showMessageDialog(view,
+                    "Rendez-vous annulé avec succès.", "Succès",
+                    JOptionPane.INFORMATION_MESSAGE);
+
+            refreshAll();  // le RDV n'apparait plus dans "Mes rendez-vous"
+        } catch (DAOException e) {
+            JOptionPane.showMessageDialog(view,
+                    "Erreur lors de l'annulation : " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
 }
