@@ -1,5 +1,5 @@
 package Controleur;
-
+import Vue.ModifierProfilView;
 import DAO.DAOException;
 import DAO.PatientDAO;
 import DAO.SpecialisteDAO;
@@ -77,7 +77,40 @@ public class ProfilPatientController {
     }
 
     private void openModifierProfil() {
-        // ... votre code existant pour modifier le profil ...
+        ModifierProfilView modifierView = new ModifierProfilView(patient);
+
+        modifierView.setValiderListener(e -> {
+            // Récupère les nouvelles valeurs
+            String nom = modifierView.getNom().trim();
+            String prenom = modifierView.getPrenom().trim();
+            String email = modifierView.getEmail().trim();
+            String telephone = modifierView.getTelephone().trim();
+            String adresse = modifierView.getAdresse().trim();
+
+            if (nom.isEmpty() || prenom.isEmpty() || email.isEmpty()) {
+                modifierView.showError("Nom, prénom et email sont obligatoires.");
+                return;
+            }
+
+            // Met à jour le patient
+            patient.setNom(nom);
+            patient.setPrenom(prenom);
+            patient.setEmail(email);
+            patient.setTelephone(telephone);
+            patient.setAdresse(adresse);
+
+            try {
+                patientDAO.update(patient);
+                modifierView.dispose();
+                refreshAll(); // recharge les données
+            } catch (DAOException ex) {
+                modifierView.showError("Erreur lors de la mise à jour : " + ex.getMessage());
+            }
+        });
+
+        modifierView.setAnnulerListener(e -> modifierView.dispose());
+
+        modifierView.setVisible(true);
     }
 
     private void openRendezVousView() {
